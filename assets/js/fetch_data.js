@@ -1,4 +1,3 @@
-// Function der henter vores data
 export async function fetchContestant() {
   try {
     const response = await fetch("./data/contestants.json");
