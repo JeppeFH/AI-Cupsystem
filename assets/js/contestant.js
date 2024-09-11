@@ -1,7 +1,6 @@
 import { fetchContestant } from "./fetch_data.js";
 import { contestantTmpl } from "./templates.js";
 
-// Array med produkter
 let contestants = await fetchContestant();
 
 export function cupContestants() {
