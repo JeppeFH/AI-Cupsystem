@@ -1,63 +1,17 @@
 import { fetchContestant } from "./fetch_data.js";
-import { contestantTmpl, roundTmpl } from "./template.js";
+import { contestantTmpl } from "./template.js";
 
-// Function to fetch contestants and start the tournament
-export async function cupContestants() {
-  try {
-    // Fetch the contestants
-    const contestants = await fetchContestant();
+let contestants = [];
+let bowlContestants = [];
 
-    // Log to check if data is correctly fetched
-    console.log("Fetched contestants:", contestants);
+// Fetch contestants when the page loads
+const loadContestants = async () => {
+  contestants = await fetchContestant();
+  bowlContestants = [...contestants]; // Copy the original contestants into the bowl
+  displayBowl(); // Display names in the bowl
+};
 
-    if (!contestants || contestants.length === 0) {
-      console.error("No contestants available.");
-      return;
-    }
-
-    // Render contestants
-    renderContestants(contestants);
-
-    // Simulate tournament
-    const champion = await simulateTournament(contestants);
-    console.log(`The champion is: ${champion.name}`);
-  } catch (error) {
-    console.error("Error in cupContestants:", error);
-  }
-}
-
-// Function to render contestants into the DOM
-function renderContestants(contestants) {
-  const cupContainer = document.querySelector(".cup-container");
-
-  if (!cupContainer) {
-    console.error("Cup container not found.");
-    return;
-  }
-
-  let matchesHTML = "";
-  let remainingContestants = [...contestants]; // Clone the contestants array
-
-  // Pair contestants for the first round
-  while (remainingContestants.length > 1) {
-    const contestant1 = remainingContestants.pop();
-    const contestant2 = remainingContestants.pop();
-    matchesHTML += contestantTmpl(contestant1, contestant2);
-  }
-
-  // If there's an odd contestant out, automatically advance to the next round
-  if (remainingContestants.length === 1) {
-    const contestant = remainingContestants.pop();
-    matchesHTML += contestantTmpl(contestant);
-  }
-
-  // Insert the HTML for the first round into the container
-  cupContainer.innerHTML = roundTmpl(matchesHTML);
-
-  console.log("Contestants rendered to the DOM.");
-}
-
-// Helper function to shuffle an array
+// Function to shuffle the contestants array
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -65,49 +19,60 @@ function shuffleArray(array) {
   }
 }
 
-// Function to simulate a match and randomly choose a winner
-function simulateMatch(contestant1, contestant2) {
-  console.log(`Match: ${contestant1.name} vs ${contestant2.name}`);
-  const winner = Math.random() < 0.5 ? contestant1 : contestant2;
-  console.log(`Winner: ${winner.name}`);
-  return winner;
+// Function to display contestants in the "bowl"
+function displayBowl() {
+  let bowlContainer = document.querySelector(".bowl");
+  bowlContainer.innerHTML = ""; // Clear the bowl
+
+  // Populate the bowl with contestant names
+  bowlContestants.forEach((contestant) => {
+    let contestantDiv = document.createElement("div");
+    contestantDiv.className = "bowl-item";
+    contestantDiv.innerText = contestant.name;
+    bowlContainer.appendChild(contestantDiv);
+  });
 }
 
-// Function to simulate a round of matches
-function simulateRound(contestants) {
-  let winners = [];
+// Generate random pairs of contestants
+export function generateRandomPairs() {
+  let cupContainer = document.querySelector(".cup-container");
+  cupContainer.innerHTML = ""; // Clear existing content
 
-  for (let i = 0; i < contestants.length; i += 2) {
-    if (i + 1 < contestants.length) {
-      const winner = simulateMatch(contestants[i], contestants[i + 1]);
-      winners.push(winner);
-    } else {
-      winners.push(contestants[i]); // Automatically move odd contestant to next round
-    }
+  // Shuffle the contestants in the bowl
+  shuffleArray(bowlContestants);
+
+  // Create pairs of contestants
+  while (bowlContestants.length > 1) {
+    const contestant1 = bowlContestants.pop();
+    const contestant2 = bowlContestants.pop();
+
+    // Insert the match into the DOM
+    cupContainer.insertAdjacentHTML(
+      "beforeend",
+      contestantTmpl(contestant1, contestant2)
+    );
   }
 
-  return winners;
+  // If an odd number of contestants, handle the last one
+  if (bowlContestants.length === 1) {
+    const loneContestant = bowlContestants.pop();
+    cupContainer.insertAdjacentHTML(
+      "beforeend",
+      contestantTmpl(loneContestant)
+    );
+  }
+
+  // Refresh the bowl display after drawing
+  displayBowl();
 }
 
-// Function to simulate the entire tournament
-async function simulateTournament(contestants) {
-  if (!contestants || contestants.length === 0) {
-    console.error("No contestants available for simulation.");
-    return;
-  }
-
-  console.log("Starting tournament simulation...");
-
-  shuffleArray(contestants); // Shuffle contestants for random pairings
-
-  let round = 1;
-
-  // Continue simulating rounds until we have one winner
-  while (contestants.length > 1) {
-    console.log(`Round ${round}:`);
-    contestants = simulateRound(contestants); // Get winners of this round
-    round++;
-  }
-
-  return contestants[0]; // Return the final champion
+// Reset the tournament to allow for a new generation
+export function resetTournament() {
+  bowlContestants = [...contestants]; // Reset the bowl
+  let cupContainer = document.querySelector(".cup-container");
+  cupContainer.innerHTML = ""; // Clear the current pairings
+  displayBowl(); // Refill the bowl with contestants
 }
+
+// Load contestants when the script runs
+loadContestants();
