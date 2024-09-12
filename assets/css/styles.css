@@ -114,8 +114,22 @@ button:hover {
   font-weight: 500;
 }
 
+.cup-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(auto auto);
+  gap: 20px;
+}
+
+.btn-container {
+  display: flex;
+  margin-bottom: 10px;
+}
+
 .line {
   font-size: 1.5rem;
+  font-weight: 600;
+  padding: 0 10px;
 }
 
 .round-1 .match:nth-child(odd) {
