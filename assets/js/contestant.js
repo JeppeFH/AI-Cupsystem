@@ -3,12 +3,14 @@ import { contestantTmpl } from "./template.js";
 
 let contestants = [];
 let bowlContestants = [];
+let round = 1; // Tracker runder
+let nextRoundContestants = []; // Tracker contestant for næste runde
 
 // Fetch contestants when the page loads
 const loadContestants = async () => {
   contestants = await fetchContestant();
-  bowlContestants = [...contestants]; // Copy the original contestants into the bowl
-  displayBowl(); // Display names in the bowl
+  bowlContestants = [...contestants];
+  displayBowl();
 };
 
 // Function to shuffle the contestants array
@@ -29,87 +31,121 @@ function displayBowl() {
     let contestantDiv = document.createElement("div");
     contestantDiv.className = "bowl-item";
     contestantDiv.innerText = contestant.name;
-    contestantDiv.dataset.index = index; // Save index for reference
-
-    // Random starting positions within the bowl
-    const randomX = Math.floor(Math.random() * 100) - 50 + "%"; // -50% to 50%
-    const randomY = Math.floor(Math.random() * 100) - 50 + "%"; // -50% to 50%
-    contestantDiv.style.transform = `translate(${randomX}, ${randomY})`;
-
-    // Append to bowl
+    contestantDiv.dataset.index = index;
     bowlContainer.appendChild(contestantDiv);
   });
 }
 
-// Function to apply random flying directions
-function applyFlyingEffect() {
-  const bowlItems = document.querySelectorAll(".bowl-item");
+// Function to generate a new round container dynamically
+function createRoundContainer(roundNumber) {
+  let tournamentContainer = document.querySelector(".tournament-container");
+  let roundDiv = document.createElement("div");
+  roundDiv.className = `cup-container round-${roundNumber}`;
+  roundDiv.innerHTML = `<h3>Runde ${roundNumber}</h3>`;
+  tournamentContainer.appendChild(roundDiv);
+  return roundDiv;
+}
 
-  bowlItems.forEach((item) => {
-    // Generate random values for each contestant's movement
-    const randomX = Math.floor(Math.random() * 200) - 100 + "px"; // -100px to 100px
-    const randomY = Math.floor(Math.random() * 200) - 100 + "px"; // -100px to 100px
+// Function to handle manual winner selection
+function handleWinnerSelection(matchElement, contestant1, contestant2) {
+  const contestants = matchElement.querySelectorAll(".contestant");
 
-    // Apply the CSS variables for unique movement
-    item.style.setProperty("--random-x", randomX);
-    item.style.setProperty("--random-y", randomY);
+  contestants.forEach((contestant) => {
+    contestant.addEventListener("click", () => {
+      contestants.forEach((e) => e.classList.remove("selected"));
 
-    // Add the flying animation
-    item.style.animation = "fly 2s ease-in-out infinite";
+      // Mark the selected contestant
+      contestant.classList.add("selected");
+
+      // Determine the winner and add to the next round
+      if (contestant.classList.contains("selected")) {
+        nextRoundContestants.push(contestant1);
+      } else {
+        nextRoundContestants.push(contestant2);
+      }
+
+      // Check if all winners for the round have been selected
+      const allMatches = matchElement.parentElement.querySelectorAll(".match");
+      const winnersSelected = Array.from(allMatches).every((match) =>
+        match.querySelector(".contestant.selected")
+      );
+
+      if (winnersSelected) {
+        proceedToNextRound(); // Move to the next round once all winners are selected
+      }
+    });
   });
 }
 
-// Generate random pairs of contestants with flying animation
+// Generate random pairs of contestants for each round
 export function generateRandomPairs() {
-  let cupContainer = document.querySelector(".cup-container");
-  cupContainer.innerHTML = ""; // Clear existing content
+  let currentRoundContainer = createRoundContainer(round);
+  let remainingContestants = [...bowlContestants];
+  nextRoundContestants = []; // Reset next round winners
 
-  // Apply the flying effect to all items in the bowl
-  applyFlyingEffect();
+  // Shuffle the contestants in the bowl
+  shuffleArray(remainingContestants);
 
-  // After a couple of seconds (e.g., 2 seconds), stop the animation and draw the pairs
-  setTimeout(() => {
-    // Stop flying effect
-    const bowlItems = document.querySelectorAll(".bowl-item");
-    bowlItems.forEach((item) => {
-      item.style.animation = ""; // Remove animation
-    });
+  // Create pairs of contestants
+  while (remainingContestants.length > 1) {
+    const contestant1 = remainingContestants.pop();
+    const contestant2 = remainingContestants.pop();
 
-    // Shuffle the contestants in the bowl
-    shuffleArray(bowlContestants);
+    // Insert the match into the current round container
+    currentRoundContainer.insertAdjacentHTML(
+      "beforeend",
+      contestantTmpl(contestant1, contestant2)
+    );
 
-    // Create pairs of contestants
-    while (bowlContestants.length > 1) {
-      const contestant1 = bowlContestants.pop();
-      const contestant2 = bowlContestants.pop();
+    // Get the match element and add click listeners for manual selection
+    const matchElement = currentRoundContainer.lastElementChild;
+    handleWinnerSelection(matchElement, contestant1, contestant2);
+  }
 
-      // Insert the match into the DOM
-      cupContainer.insertAdjacentHTML(
-        "beforeend",
-        contestantTmpl(contestant1, contestant2)
-      );
-    }
+  // If there's an odd number of contestants, this part will be handled to ensure no automatic selection
+  // Ensure to prompt to select a winner from remaining contestants
+  if (remainingContestants.length === 1) {
+    const loneContestant = remainingContestants.pop();
+    currentRoundContainer.insertAdjacentHTML(
+      "beforeend",
+      contestantTmpl(loneContestant)
+    );
+    nextRoundContestants.push(loneContestant);
+  }
 
-    // If an odd number of contestants, handle the last one
-    if (bowlContestants.length === 1) {
-      const loneContestant = bowlContestants.pop();
-      cupContainer.insertAdjacentHTML(
-        "beforeend",
-        contestantTmpl(loneContestant)
-      );
-    }
+  // Update the bowl for the next round
+  bowlContestants = nextRoundContestants;
+}
 
-    // Refresh the bowl display after drawing
-    displayBowl();
-  }, 2000); // Adjust this duration for how long you want the flying effect
+// Function to proceed to the next round
+function proceedToNextRound() {
+  let cupContainer = document.querySelector(".tournament-container");
+  cupContainer.innerHTML = "";
+
+  // Increment round and generate pairs for the next round
+  round++;
+  if (bowlContestants.length > 1) {
+    generateRandomPairs();
+  } else {
+    declareWinner(); // If only one contestant remains, declare the winner
+  }
+}
+
+// Function to declare the final winner
+function declareWinner() {
+  const winnerContainer = document.createElement("div");
+  winnerContainer.className = "final-winner-container";
+  winnerContainer.innerHTML = `<h2>Vinderen er ${bowlContestants[0].name}!</h2>`;
+  document.querySelector(".tournament-container").appendChild(winnerContainer);
 }
 
 // Reset the tournament to allow for a new generation
 export function resetTournament() {
   bowlContestants = [...contestants]; // Reset the bowl
-  let cupContainer = document.querySelector(".cup-container");
-  cupContainer.innerHTML = ""; // Clear the current pairings
-  displayBowl(); // Refill the bowl with contestants
+  let cupContainer = document.querySelector(".tournament-container");
+  cupContainer.innerHTML = "";
+  round = 1;
+  displayBowl();
 }
 
 // Load contestants when the script runs

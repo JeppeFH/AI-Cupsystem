@@ -154,3 +154,22 @@ button:hover {
   font-weight: bold;
   text-align: center;
 }
+
+.round-1 .match {
+  background-color: #e0f7fa;
+}
+
+.round-2 .match {
+  background-color: #b2ebf2;
+}
+
+.round-3 .match {
+  background-color: #80deea;
+}
+
+/* Highlight the selected contestant */
+.contestant.selected {
+  background-color: #2ecc71;
+  color: white;
+  font-weight: bold;
+}
